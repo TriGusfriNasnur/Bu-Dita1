@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sistem Penunjang Keputusan - Pemilihan Karyawan Terbaik</title>
+  <style>
+    :root{
+      --bg:#0f172a; /* dark navy */
+      --card:#0b1220;
+      --accent:#06b6d4; /* teal */
+      --muted:#94a3b8;
+      --glass: rgba(255,255,255,0.03);
+      --success:#10b981;
+      --danger:#ef4444;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#071024 0%, #07172b 100%);color:#e6eef6;min-height:100vh}
+    .container{max-width:1100px;margin:36px auto;padding:24px}
+    header{display:flex;align-items:center;gap:16px}
+    .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:700;color:#021126}
+    h1{margin:0;font-size:20px}
+    p.lead{margin:4px 0 0;color:var(--muted);font-size:13px}
+
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:20px;margin-top:20px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
+    input[type=text], input[type=number], select{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;outline:none}
+    .row{display:flex;gap:12px}
+    .btn{display:inline-block;padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:#021126;font-weight:600;cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    .small{font-size:12px;padding:8px 10px}
+
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+    th,td{padding:10px;border-bottom:1px dashed rgba(255,255,255,0.03);text-align:left}
+    thead th{color:var(--muted);font-size:12px}
+    tbody tr:hover{background:rgba(255,255,255,0.01)}
+    .badge{display:inline-block;padding:6px 8px;border-radius:999px;font-weight:600;font-size:12px;background:var(--glass);color:var(--muted)}
+    .top{background:linear-gradient(90deg,#f59e0b,#ef4444);color:#021126;padding:6px 8px;border-radius:8px;font-weight:700}
+
+    .weights{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+
+    /* responsive */
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">SPK</div>
+      <div>
+        <h1>Sistem Penunjang Keputusan<br><span style="font-weight:600">Pemilihan Karyawan Terbaik Metode Weighted Sum Model</span></h1>
+        <p class="lead">Input karyawan, beri bobot kriteria, hitung skor, tampilkan peringkat.</p>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Left: main controls and result -->
+      <div>
+        <div class="card" id="panel-main">
+          <h3 style="margin-top:0">Tambah / Kelola Karyawan</h3>
+
+          <div style="margin-bottom:12px">
+            <label>Nama Karyawan</label>
+            <input type="text" id="empName" placeholder="Contoh: Tri anak sholeh" />
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
+            <div>
+              <label>Kinerja (0-100)</label>
+              <input type="number" id="scorePerformance" min="0" max="100" value="75" />
+            </div>
+            <div>
+              <label>Kehadiran (0-100)</label>
+              <input type="number" id="scoreAttendance" min="0" max="100" value="90" />
+            </div>
+            <div>
+              <label>Disiplin (0-100)</label>
+              <input type="number" id="scoreDiscipline" min="0" max="100" value="80" />
+            </div>
+            <div>
+              <label>Komunikasi (0-100)</label>
+              <input type="number" id="scoreCommunication" min="0" max="100" value="85" />
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button class="btn" id="addEmp">Tambah Karyawan</button>
+            <button class="btn ghost" id="clearAll">Bersihkan Semua</button>
+            <button class="btn ghost" id="exportCsv">Export CSV</button>
+          </div>
+
+          <div style="margin-top:8px">
+            <label>Daftar Karyawan</label>
+            <table id="tableEmployees">
+              <thead>
+                <tr><th>Nama</th><th>Kinerja</th><th>Kehadiran</th><th>Disiplin</th><th>Komunikasi</th><th>Action</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h3 style="margin-top:0">Hasil Perankingan</h3>
+          <!--<p class="lead" style="margin-top:4px">Gunakan metode Bobot &amp; Penjumlahan Tertimbang (Weighted Sum). Atur bobot di panel samping.</p>-->
+
+          <div id="resultArea">
+            <table id="tableResult">
+              <thead><tr><th>Peringkat</th><th>Nama</th><th>Skor</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: weights and settings -->
+      <aside>
+        <div class="card">
+          <h3 style="margin-top:0">Bobot Kriteria (Total = 100)</h3>
+          <div class="weights" style="margin-top:8px">
+            <div>
+              <label>Kinerja (%)</label>
+              <input type="number" id="wPerformance" min="0" max="100" value="40" />
+            </div>
+            <div>
+              <label>Kehadiran (%)</label>
+              <input type="number" id="wAttendance" min="0" max="100" value="20" />
+            </div>
+            <div>
+              <label>Disiplin (%)</label>
+              <input type="number" id="wDiscipline" min="0" max="100" value="20" />
+            </div>
+            <div>
+              <label>Komunikasi (%)</label>
+              <input type="number" id="wCommunication" min="0" max="100" value="20" />
+            </div>
+          </div>
+
+          <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+            <button class="btn" id="calcRank">Hitung &amp; Rangking</button>
+            <button class="btn ghost" id="resetWeights">Reset Bobot</button>
+          </div>
+
+          <div style="margin-top:10px;color:var(--muted);font-size:13px">Petunjuk singkat: Masukkan karyawan -> atur bobot -> klik "Hitung &amp; Rangking".</div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h3 style="margin-top:0">Informasi</h3>
+          <p style="color:var(--muted);font-size:13px">PT.THREE yang dipimpin oleh Direktur Tri Gusfri Nasnur</p>
+        </div>
+      </aside>
+    </div>
+
+    <div class="footer">Tugas Bu Dita1 ❤️ Ngenah pisan lierna</div>
+  </div>
+
+  <script>
+    // Simple client-side storage
+    const state = {
+      employees: JSON.parse(localStorage.getItem('spk_employees') || '[]')
+    }
+
+    // helpers
+    function qs(id){return document.getElementById(id)}
+
+    function renderEmployees(){
+      const tbody = qs('tableEmployees').querySelector('tbody')
+      tbody.innerHTML = ''
+      state.employees.forEach((e, i)=>{
+        const tr = document.createElement('tr')
+        tr.innerHTML = `<td>${escapeHtml(e.name)}</td>
+          <td>${e.performance}</td>
+          <td>${e.attendance}</td>
+          <td>${e.discipline}</td>
+          <td>${e.communication}</td>
+          <td><button class='small btn ghost' data-index='${i}' onclick='removeEmp(${i})'>Hapus</button></td>`
+        tbody.appendChild(tr)
+      })
+    }
+
+    function escapeHtml(text){ return text.replace(/[&<>"']/g, function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]}) }
+
+    function saveState(){localStorage.setItem('spk_employees', JSON.stringify(state.employees))}
+
+    function addEmployee(){
+      const name = qs('empName').value.trim()
+      if(!name){alert('Isi nama karyawan.'); return}
+      const p = clampNum(qs('scorePerformance').value,0,100)
+      const a = clampNum(qs('scoreAttendance').value,0,100)
+      const d = clampNum(qs('scoreDiscipline').value,0,100)
+      const c = clampNum(qs('scoreCommunication').value,0,100)
+      state.employees.push({name, performance: +p, attendance:+a, discipline:+d, communication:+c})
+      saveState(); renderEmployees(); qs('empName').value='';
+    }
+
+    function clampNum(v,min,max){ let n = Number(v); if(Number.isNaN(n)) n = 0; return Math.max(min, Math.min(max, n)) }
+
+    function removeEmp(i){ if(!confirm('Hapus karyawan ini?')) return; state.employees.splice(i,1); saveState(); renderEmployees(); }
+
+    function clearAll(){ if(!confirm('Hapus semua karyawan?')) return; state.employees = []; saveState(); renderEmployees(); qs('tableResult').querySelector('tbody').innerHTML=''; }
+
+    function getWeights(){
+      const wP=clampNum(qs('wPerformance').value,0,100)
+      const wA=clampNum(qs('wAttendance').value,0,100)
+      const wD=clampNum(qs('wDiscipline').value,0,100)
+      const wC=clampNum(qs('wCommunication').value,0,100)
+      const total = wP+wA+wD+wC
+      return {wP,wA,wD,wC,total}
+    }
+
+    function calcRanking(){
+      if(state.employees.length===0){alert('Belum ada karyawan. Tambahkan dulu.'); return}
+      const w = getWeights()
+      if(w.total<=0){alert('Jumlah bobot harus lebih dari 0.'); return}
+      // normalize weights to sum to 1
+      const wp = w.wP/w.total, wa = w.wA/w.total, wd = w.wD/w.total, wc = w.wC/w.total
+
+      // Weighted Sum: skor = sum(kriteria*weight)
+      const results = state.employees.map(e=>{
+        const score = e.performance*wp + e.attendance*wa + e.discipline*wd + e.communication*wc
+        return {...e, score: Math.round(score*100)/100}
+      })
+
+      results.sort((a,b)=>b.score - a.score)
+
+      const tbody = qs('tableResult').querySelector('tbody')
+      tbody.innerHTML = ''
+      results.forEach((r, idx)=>{
+        const tr = document.createElement('tr')
+        tr.innerHTML = `<td>#${idx+1}</td><td>${escapeHtml(r.name)}</td><td>${r.score}</td>`
+        if(idx===0){
+          const el = document.createElement('td')
+          el.colSpan = 0
+        }
+        tbody.appendChild(tr)
+      })
+
+      // highlight top
+      if(results[0]){
+        setTimeout(()=>{
+          alert('Karyawan terbaik: ' + results[0].name + ' (Skor: ' + results[0].score + ')')
+        },50)
+      }
+    }
+
+    function exportCsv(){
+      if(state.employees.length===0){alert('Tidak ada data untuk di-export'); return}
+      const rows = [['Nama','Kinerja','Kehadiran','Disiplin','Komunikasi']]
+      state.employees.forEach(e=>rows.push([e.name,e.performance,e.attendance,e.discipline,e.communication]))
+      const csv = rows.map(r=>r.map(c=>`"${(''+c).replace(/"/g,'""')}"`).join(',')).join('\n')
+      const blob = new Blob([csv],{type:'text/csv'})
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = 'karyawan_spk.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url)
+    }
+
+    function resetWeights(){ qs('wPerformance').value=40; qs('wAttendance').value=20; qs('wDiscipline').value=20; qs('wCommunication').value=20 }
+
+    // attach events
+    qs('addEmp').addEventListener('click', addEmployee)
+    qs('clearAll').addEventListener('click', clearAll)
+    qs('calcRank').addEventListener('click', calcRanking)
+    qs('exportCsv').addEventListener('click', exportCsv)
+    qs('resetWeights').addEventListener('click', resetWeights)
+
+    // init
+    renderEmployees()
+  </script>
+</body>
+</html>
